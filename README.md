@@ -40,6 +40,15 @@ docker compose up --build -d     # api(8000) + db
 docker compose ps                # healthy 확인
 ```
 
+가상 기계 (보드·실제 기계 없이 정상·이상 소리 만들기):
+
+```bash
+pip install -r tools/requirements.txt
+python tools/virtual_machine.py wav -o bearing.wav --anomaly bearing --severity 0.8   # imbalance · bearing · rubbing · slowdown
+python tools/virtual_machine.py wav -o story.wav --anomaly imbalance --ramp --seconds 120   # 점점 나빠지는 고장 전조
+python tools/virtual_machine.py dataset --out data/generated                              # 학습용 1초 조각
+```
+
 펌웨어는 `device/firmware/app/secrets.example.h`를 `secrets.h`로 복사해 Wi-Fi와 서버 주소(PC IP)를 채운 뒤 올린다. 시리얼 첫 줄에 `FW_VERSION`이 나온다.
 
 ## 테스트 · CI
