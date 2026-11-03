@@ -4,6 +4,7 @@
 #   device  : ESP32 펌웨어 컴파일 (Edge Impulse 라이브러리 포함, 코어·빌드 캐시) → pytest tests/device
 #   server  : compose 빌드 → 기동(healthcheck) → pytest tests/server tests/contracts
 #   tools   : 가상 기계·도구 테스트 (서비스 없이, 수 초)
+#   model   : 모델 학습 → 감지율·오경보율 기준 검사, 커밋된 모델 헤더가 학습 결과와 같은지
 # 테스트는 tests/<파트>/에 test_*.py 를 넣으면 이 파일을 고치지 않아도 돈다.
 name: ci
 
@@ -27,6 +28,7 @@ jobs:
       device: ${{ steps.f.outputs.device == 'true' || steps.all.outputs.all == 'true' }}
       server: ${{ steps.f.outputs.server == 'true' || steps.all.outputs.all == 'true' }}
       tools: ${{ steps.f.outputs.tools == 'true' || steps.all.outputs.all == 'true' }}
+      model: ${{ steps.f.outputs.model == 'true' || steps.all.outputs.all == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - id: f
@@ -43,6 +45,11 @@ jobs:
             tools:
               - 'tools/**'
               - 'tests/tools/**'
+            model:
+              - 'model/**'
+              - 'tests/model/**'
+              - 'tools/virtual_machine.py'
+              - 'device/firmware/app/src/guard/model_data.h'
             common:
               - 'docs/contracts/**'
               - 'tests/contracts/**'
@@ -152,9 +159,27 @@ jobs:
       - run: pip install -r tools/requirements.txt -r tests/requirements.txt
       - run: pytest tests/tools
 
+  model:
+    needs: changes
+    if: needs.changes.outputs.model == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            tools/requirements.txt
+            tests/requirements.txt
+      - run: pip install -r tools/requirements.txt -r tests/requirements.txt
+      - name: 학습·품질 검사 (기준을 못 넘으면 실패)
+        run: pytest tests/model
+
   ci-ok:
     if: always()
-    needs: [changes, lint, device, server, tools]
+    needs: [changes, lint, device, server, tools, model]
     runs-on: ubuntu-24.04
     steps:
       - name: 실패·취소된 job이 없으면 통과 (건너뛴 job은 통과로 본다)
