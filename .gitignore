@@ -1,0 +1,17 @@
+# 비밀값 (사람마다 다른 값)
+.env
+device/firmware/**/secrets.h
+
+# 모델·데이터 (Edge Impulse Arduino 라이브러리 zip은 예외: CI 컴파일용으로 커밋)
+*.pt
+*.onnx
+*.tflite
+data/raw/
+
+# 빌드·캐시
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+build/
+.DS_Store
