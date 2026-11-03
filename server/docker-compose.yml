@@ -1,0 +1,37 @@
+# 내 PC에서 실행: cd server && cp ../.env.example .env && docker compose up --build -d
+# ESP32는 같은 Wi-Fi에서 http://<PC IP>:8000 으로 보낸다. 외부에 여는 포트는 api 8000뿐이다.
+services:
+  api:
+    build: ./api
+    image: machine-sound-guard/api:${TAG:-dev}
+    environment:
+      PORT: "8000"
+      DATABASE_URL: postgresql://guard:${POSTGRES_PASSWORD:-guard}@db:5432/guard
+    ports: ["8000:8000"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  db:
+    image: postgres:16.6-alpine
+    environment:
+      POSTGRES_USER: guard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-guard}
+      POSTGRES_DB: guard
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U guard -d guard"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
