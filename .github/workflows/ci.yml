@@ -1,7 +1,7 @@
 # PR마다 바뀐 파트만 검사한다. 브랜치 보호 규칙은 마지막 ci-ok 하나만 필수로 건다.
 #   changes : 바뀐 경로로 돌 job을 고른다. 계약·공용 설정이 바뀌거나 main으로 가는 PR이면 전부
 #   lint    : ruff (항상, 수 초)
-#   device  : ESP32 펌웨어 컴파일 (Edge Impulse 라이브러리 포함, 코어·빌드 캐시) → pytest tests/device
+#   device  : ESP32 펌웨어 컴파일 (코어·빌드 캐시) → 가상 ESP32(PC 빌드)가 파이썬 기준 구현과 같은 결과인지 (pytest tests/device)
 #   server  : compose 빌드 → 기동(healthcheck) → pytest tests/server tests/contracts
 #   tools   : 가상 기계·도구 테스트 (서비스 없이, 수 초)
 #   model   : 모델 학습 → 감지율·오경보율 기준 검사, 커밋된 모델 헤더가 학습 결과와 같은지
@@ -39,6 +39,8 @@ jobs:
             device:
               - 'device/**'
               - 'tests/device/**'
+              - 'model/*.py'                  # 기준 구현이 바뀌면 C 코드와 다시 비교
+              - 'tools/virtual_machine.py'
             server:
               - 'server/**'
               - 'tests/server/**'
@@ -113,9 +115,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -r tests/requirements.txt
-      - name: pytest (테스트가 0개면 통과)
-        run: pytest tests/device || [ $? -eq 5 ]
+      - run: pip install -r tools/requirements.txt -r tests/requirements.txt
+      - name: 가상 ESP32 빌드와 파이썬 기준 구현 비교
+        run: pytest tests/device
 
   server:
     needs: changes

@@ -19,7 +19,7 @@ PC 스피커로 재생       Edge Impulse 이상 감지          HTTP POST (같�
 
 | 폴더 | 하는 일 |
 |---|---|
-| `device/` | ESP32-S3 펌웨어(`firmware/app`), Edge Impulse 라이브러리 zip(`model/`) |
+| `device/` | ESP32-S3 펌웨어(`firmware/app`), 판정 코드(`firmware/app/src/guard`, C++), 가상 ESP32(`sim`, 같은 판정 코드를 PC에서) |
 | `server/` | API 서버와 Postgres (docker compose) |
 | `model/` | 이상 감지 모델 학습 (멜 대역 특징 + K-means), ESP32용 헤더 내보내기, 평가 (`report.md`) |
 | `tools/` | 가상 기계(정상·이상 소리 만들기), 가짜 장치(보드 없이 기록 보내기) |
@@ -56,6 +56,14 @@ python tools/virtual_machine.py dataset --out data/generated                    
 python model/train.py            # 기본 모델 학습·내보내기 (약 15초)
 python model/train.py --check    # 커밋된 모델이 학습 결과와 같은지
 pytest tests/model               # 감지율·오경보율 기준 (CI와 같다)
+```
+
+가상 ESP32 (펌웨어와 같은 판정 코드를 PC에서, 보드 없이):
+
+```bash
+make -C device/sim
+python tools/virtual_machine.py stream --anomaly bearing --severity 0.6 --seconds 30 | device/sim/guard_sim run --windows
+python tools/virtual_machine.py stream --seconds 200 | device/sim/guard_sim run --calibrate 120     # 현장 보정 2분 뒤 판정
 ```
 
 펌웨어는 `device/firmware/app/secrets.example.h`를 `secrets.h`로 복사해 Wi-Fi와 서버 주소(PC IP)를 채운 뒤 올린다. 시리얼 첫 줄에 `FW_VERSION`이 나온다.
